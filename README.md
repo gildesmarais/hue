@@ -51,7 +51,7 @@ See [QUERY_SYNTAX.md](QUERY_SYNTAX.md) for complete documentation.
 
 ## Prerequisites
 
-1. Go 1.21 or later
+1. Go 1.27.3
 2. Philips Hue Bridge with v2 API support
 3. Hue Bridge API username (see setup below)
 

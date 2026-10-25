@@ -1,6 +1,8 @@
 module github.com/kungfusheep/hue
 
-go 1.24.0
+go 1.27.0
+
+toolchain go1.27.3
 
 require (
 	github.com/charmbracelet/bubbles v0.21.0
