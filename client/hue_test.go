@@ -197,28 +197,30 @@ func TestSetLightEffect(t *testing.T) {
 }
 
 func TestHexToXY(t *testing.T) {
+	// xy from the sRGB matrix in hexToXY, linearized with math.Pow.
+	// Black stays the zero-sum white point.
+	const tolerance = 1e-4
 	tests := []struct {
-		hex      string
+		hex       string
 		expectedX float64
 		expectedY float64
-		tolerance float64
 	}{
-		{"#FF0000", 0.64, 0.33, 0.1},  // Red
-		{"#00FF00", 0.30, 0.60, 0.3},  // Green (wider tolerance)
-		{"#0000FF", 0.15, 0.06, 0.1},  // Blue
-		{"#FFFFFF", 0.31, 0.33, 0.1},  // White
-		{"000000", 0.31, 0.33, 0.1},   // Black (defaults to white point)
+		{"#FF0000", 0.6399999255, 0.3300000683},
+		{"#00FF00", 0.3000000084, 0.6000000168},
+		{"#0000FF", 0.1500000083, 0.0600000033},
+		{"#FFFFFF", 0.3127266044, 0.3290231524},
+		{"000000", 0.3127, 0.3290},
 	}
-	
+
 	for _, test := range tests {
 		x, y := hexToXY(test.hex)
-		
-		if abs(x-test.expectedX) > test.tolerance {
-			t.Errorf("hexToXY(%s) X: expected ~%f, got %f", test.hex, test.expectedX, x)
+
+		if abs(x-test.expectedX) > tolerance {
+			t.Errorf("hexToXY(%s) X: expected %.10f, got %.10f", test.hex, test.expectedX, x)
 		}
-		
-		if abs(y-test.expectedY) > test.tolerance {
-			t.Errorf("hexToXY(%s) Y: expected ~%f, got %f", test.hex, test.expectedY, y)
+
+		if abs(y-test.expectedY) > tolerance {
+			t.Errorf("hexToXY(%s) Y: expected %.10f, got %.10f", test.hex, test.expectedY, y)
 		}
 	}
 }
