@@ -210,6 +210,8 @@ func TestHexToXY(t *testing.T) {
 		{"#0000FF", 0.1500000083, 0.0600000033},
 		{"#FFFFFF", 0.3127266044, 0.3290231524},
 		{"000000", 0.3127, 0.3290},
+		// Mid-tone: exponent 2 and 2.4 diverge (primaries/grays do not).
+		{"#FF8000", 0.5429908801, 0.4070366672},
 	}
 
 	for _, test := range tests {
@@ -222,6 +224,13 @@ func TestHexToXY(t *testing.T) {
 		if abs(y-test.expectedY) > tolerance {
 			t.Errorf("hexToXY(%s) Y: expected %.10f, got %.10f", test.hex, test.expectedY, y)
 		}
+	}
+
+	// Integer-power linearization (exponent truncated to 2) must not match.
+	const wrongX, wrongY = 0.5243545494, 0.4218361071
+	x, y := hexToXY("#FF8000")
+	if abs(x-wrongX) <= tolerance && abs(y-wrongY) <= tolerance {
+		t.Errorf("hexToXY(#FF8000) matched integer-power xy (%.10f, %.10f); gamma 2.4 is required", wrongX, wrongY)
 	}
 }
 
