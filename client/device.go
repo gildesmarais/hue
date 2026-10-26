@@ -7,30 +7,30 @@ import (
 
 // Device represents a device resource
 type Device struct {
-	ID           string               `json:"id"`
-	IDV1         string               `json:"id_v1"`
-	Type         string               `json:"type"`
-	Services     []ResourceIdentifier `json:"services"`
-	Metadata     Metadata             `json:"metadata"`
-	ProductData  ProductData          `json:"product_data"`
-	PowerState   *PowerState          `json:"device_power,omitempty"`
+	ID          string               `json:"id"`
+	IDV1        string               `json:"id_v1"`
+	Type        string               `json:"type"`
+	Services    []ResourceIdentifier `json:"services"`
+	Metadata    Metadata             `json:"metadata"`
+	ProductData ProductData          `json:"product_data"`
+	PowerState  *PowerState          `json:"device_power,omitempty"`
 }
 
 // ProductData contains product information
 type ProductData struct {
-	ModelID         string `json:"model_id"`
+	ModelID          string `json:"model_id"`
 	ManufacturerName string `json:"manufacturer_name"`
-	ProductName     string `json:"product_name"`
+	ProductName      string `json:"product_name"`
 	ProductArchetype string `json:"product_archetype"`
-	Certified       bool   `json:"certified"`
-	SoftwareVersion string `json:"software_version"`
+	Certified        bool   `json:"certified"`
+	SoftwareVersion  string `json:"software_version"`
 }
 
 // PowerState represents device power information
 type PowerState struct {
-	PowerState       string  `json:"power_state"`
-	BatteryState     string  `json:"battery_state,omitempty"`
-	BatteryLevel     float64 `json:"battery_level,omitempty"`
+	PowerState   string  `json:"power_state"`
+	BatteryState string  `json:"battery_state,omitempty"`
+	BatteryLevel float64 `json:"battery_level,omitempty"`
 }
 
 // GetDevices returns all devices
@@ -39,16 +39,16 @@ func (c *Client) GetDevices(ctx context.Context) ([]Device, error) {
 		Errors []Error  `json:"errors"`
 		Data   []Device `json:"data"`
 	}
-	
+
 	err := c.getJSON(ctx, "/resource/device", &response)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	return response.Data, nil
 }
 
@@ -58,21 +58,56 @@ func (c *Client) GetDevice(ctx context.Context, id string) (*Device, error) {
 		Errors []Error  `json:"errors"`
 		Data   []Device `json:"data"`
 	}
-	
+
 	err := c.getJSON(ctx, fmt.Sprintf("/resource/device/%s", id), &response)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	if len(response.Data) == 0 {
 		return nil, fmt.Errorf("device not found")
 	}
-	
+
 	return &response.Data[0], nil
+}
+
+type metadataName struct {
+	Name      string `json:"name"`
+	Archetype string `json:"archetype,omitempty"`
+}
+
+// RenameDevice sets the device name and keeps its current archetype.
+func (c *Client) RenameDevice(ctx context.Context, id, name string) error {
+	device, err := c.GetDevice(ctx, id)
+	if err != nil {
+		return err
+	}
+	if device.Metadata.Name == name {
+		return nil
+	}
+	payload := struct {
+		Metadata metadataName `json:"metadata"`
+	}{Metadata: metadataName{Name: name, Archetype: device.Metadata.Archetype}}
+	return c.putOK(ctx, fmt.Sprintf("/resource/device/%s", id), payload)
+}
+
+// RenameLight sets the light name and keeps its current archetype.
+func (c *Client) RenameLight(ctx context.Context, id, name string) error {
+	light, err := c.GetLight(ctx, id)
+	if err != nil {
+		return err
+	}
+	if light.Metadata.Name == name {
+		return nil
+	}
+	payload := struct {
+		Metadata metadataName `json:"metadata"`
+	}{Metadata: metadataName{Name: name, Archetype: light.Metadata.Archetype}}
+	return c.putOK(ctx, fmt.Sprintf("/resource/light/%s", id), payload)
 }
 
 // IdentifyDevice makes a device identify itself (usually by blinking)

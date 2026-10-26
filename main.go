@@ -3,10 +3,14 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/kungfusheep/hue/client"
@@ -43,8 +47,8 @@ func main() {
 
 // runCLI initializes and runs the CLI interface
 func runCLI() {
-	// For help commands, don't initialize the client
-	if len(os.Args) > 1 && (os.Args[1] == "help" || os.Args[1] == "--help" || os.Args[1] == "-h") {
+	// Help and bridge discovery do not need a configured client.
+	if len(os.Args) > 1 && (os.Args[1] == "help" || os.Args[1] == "--help" || os.Args[1] == "-h" || os.Args[1] == "discover") {
 		cmd.Execute(nil)
 		return
 	}
@@ -61,6 +65,10 @@ func runCLI() {
 
 // initHueClient creates and initializes a Hue client (shared by MCP and CLI)
 func initHueClient() *client.Client {
+	// Cursor does not expand ${workspaceFolder} in mcp.json envFile, so a
+	// literal path never loads. Read .env here before requiring the username.
+	loadDotEnv()
+
 	// Get configuration from environment
 	bridgeIP := os.Getenv("HUE_BRIDGE_IP")
 	if bridgeIP == "" {
@@ -86,10 +94,49 @@ func initHueClient() *client.Client {
 	// Test connection
 	ctx := context.Background()
 	if err := hueClient.TestConnection(ctx); err != nil {
+		if errors.Is(err, syscall.EHOSTUNREACH) {
+			log.Fatalf("Failed to connect to Hue bridge at %s: no route to host. macOS is blocking this process from the local network. Enable Cursor in System Settings → Privacy & Security → Local Network (and allow it in Little Snitch if that prompt appears), then restart the hue MCP server.", bridgeIP)
+		}
 		log.Fatalf("Failed to connect to Hue bridge: %v", err)
 	}
 
 	return hueClient
+}
+
+// loadDotEnv sets unset variables from .env in the working directory and,
+// if the binary lives elsewhere, beside the executable. Existing environment
+// values win.
+func loadDotEnv() {
+	paths := []string{".env"}
+	if exe, err := os.Executable(); err == nil {
+		paths = append(paths, filepath.Join(filepath.Dir(exe), ".env"))
+	}
+	for _, path := range paths {
+		applyEnvFile(path)
+	}
+}
+
+func applyEnvFile(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, val, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		val = strings.Trim(strings.TrimSpace(val), `"'`)
+		if key == "" || os.Getenv(key) != "" {
+			continue
+		}
+		_ = os.Setenv(key, val)
+	}
 }
 
 // runMCPServer runs the MCP server (original main function)

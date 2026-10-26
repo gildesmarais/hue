@@ -15,7 +15,7 @@ func (c *Client) CreateSceneFromCurrentState(ctx context.Context, name string, r
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rooms: %w", err)
 	}
-	
+
 	var targetRoom *Room
 	for _, r := range rooms {
 		if r.ID == roomID {
@@ -23,18 +23,18 @@ func (c *Client) CreateSceneFromCurrentState(ctx context.Context, name string, r
 			break
 		}
 	}
-	
+
 	if targetRoom == nil {
 		return nil, fmt.Errorf("room %s not found", roomID)
 	}
-	
+
 	// Get all lights in the room
 	var lightIDs []string
 	devices, err := c.GetDevices(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get devices: %w", err)
 	}
-	
+
 	// Find all light IDs from devices in this room
 	for _, child := range targetRoom.Children {
 		if child.RType == "device" {
@@ -50,7 +50,7 @@ func (c *Client) CreateSceneFromCurrentState(ctx context.Context, name string, r
 			}
 		}
 	}
-	
+
 	// Get current state of each light
 	var actions []SceneAction
 	for _, lightID := range lightIDs {
@@ -58,7 +58,7 @@ func (c *Client) CreateSceneFromCurrentState(ctx context.Context, name string, r
 		if err != nil {
 			continue // Skip if we can't get the light
 		}
-		
+
 		action := SceneAction{
 			Target: ResourceIdentifier{
 				RID:   lightID,
@@ -70,31 +70,31 @@ func (c *Client) CreateSceneFromCurrentState(ctx context.Context, name string, r
 				},
 			},
 		}
-		
+
 		// Add dimming if light is on
 		if light.On.On && light.Dimming.Brightness > 0 {
 			action.Action.Dimming = &Dimming{
 				Brightness: light.Dimming.Brightness,
 			}
 		}
-		
+
 		// Add color if available
 		if light.Color != nil {
 			action.Action.Color = &Color{
 				XY: light.Color.XY,
 			}
 		}
-		
+
 		// Add color temperature if available
 		if light.ColorTemperature != nil && light.ColorTemperature.MirekValid {
 			action.Action.ColorTemperature = &ColorTemperature{
 				Mirek: light.ColorTemperature.Mirek,
 			}
 		}
-		
+
 		actions = append(actions, action)
 	}
-	
+
 	// Create the scene
 	sceneCreate := SceneCreate{
 		Type: "scene",
@@ -108,7 +108,7 @@ func (c *Client) CreateSceneFromCurrentState(ctx context.Context, name string, r
 		Actions: actions,
 		Speed:   0.5, // Default transition speed
 	}
-	
+
 	return c.CreateScene(ctx, sceneCreate)
 }
 
@@ -133,7 +133,7 @@ func (c *Client) AddLightToGroup(ctx context.Context, groupID, lightID string) e
 	if err != nil {
 		return err
 	}
-	
+
 	var group *Group
 	for _, g := range groups {
 		if g.ID == groupID {
@@ -141,18 +141,18 @@ func (c *Client) AddLightToGroup(ctx context.Context, groupID, lightID string) e
 			break
 		}
 	}
-	
+
 	if group == nil {
 		return fmt.Errorf("group %s not found", groupID)
 	}
-	
+
 	// Groups in v2 are managed through rooms/zones
 	// We need to find the room/zone and update its children
 	rooms, err := c.GetRooms(ctx)
 	if err != nil {
 		return err
 	}
-	
+
 	for _, room := range rooms {
 		for _, service := range room.Services {
 			if service.RType == "grouped_light" && service.RID == groupID {
@@ -162,7 +162,7 @@ func (c *Client) AddLightToGroup(ctx context.Context, groupID, lightID string) e
 				if err != nil {
 					return err
 				}
-				
+
 				var deviceID string
 				for _, device := range devices {
 					for _, svc := range device.Services {
@@ -175,40 +175,40 @@ func (c *Client) AddLightToGroup(ctx context.Context, groupID, lightID string) e
 						break
 					}
 				}
-				
+
 				if deviceID == "" {
 					return fmt.Errorf("device containing light %s not found", lightID)
 				}
-				
+
 				// Check if device is already in room
 				for _, child := range room.Children {
 					if child.RType == "device" && child.RID == deviceID {
 						return nil // Already in the room
 					}
 				}
-				
+
 				// Add device to room
 				room.Children = append(room.Children, ResourceIdentifier{
 					RID:   deviceID,
 					RType: "device",
 				})
-				
+
 				// Update room
 				update := RoomUpdate{
 					Children: room.Children,
 				}
-				
+
 				return c.UpdateRoom(ctx, room.ID, update)
 			}
 		}
 	}
-	
+
 	// Check zones too
 	zones, err := c.GetZones(ctx)
 	if err != nil {
 		return err
 	}
-	
+
 	for _, zone := range zones {
 		for _, service := range zone.Services {
 			if service.RType == "grouped_light" && service.RID == groupID {
@@ -217,17 +217,17 @@ func (c *Client) AddLightToGroup(ctx context.Context, groupID, lightID string) e
 					RID:   lightID,
 					RType: "light",
 				})
-				
+
 				// Update zone
 				update := ZoneUpdate{
 					Children: zone.Children,
 				}
-				
+
 				return c.UpdateZone(ctx, zone.ID, update)
 			}
 		}
 	}
-	
+
 	return fmt.Errorf("room or zone for group %s not found", groupID)
 }
 
@@ -238,7 +238,7 @@ func (c *Client) RemoveLightFromGroup(ctx context.Context, groupID, lightID stri
 	if err != nil {
 		return err
 	}
-	
+
 	for _, room := range rooms {
 		for _, service := range room.Services {
 			if service.RType == "grouped_light" && service.RID == groupID {
@@ -247,7 +247,7 @@ func (c *Client) RemoveLightFromGroup(ctx context.Context, groupID, lightID stri
 				if err != nil {
 					return err
 				}
-				
+
 				var deviceID string
 				for _, device := range devices {
 					for _, svc := range device.Services {
@@ -260,7 +260,7 @@ func (c *Client) RemoveLightFromGroup(ctx context.Context, groupID, lightID stri
 						break
 					}
 				}
-				
+
 				// Remove device from room children
 				var newChildren []ResourceIdentifier
 				for _, child := range room.Children {
@@ -268,27 +268,27 @@ func (c *Client) RemoveLightFromGroup(ctx context.Context, groupID, lightID stri
 						newChildren = append(newChildren, child)
 					}
 				}
-				
+
 				if len(newChildren) == len(room.Children) {
 					return nil // Device wasn't in the room
 				}
-				
+
 				// Update room
 				update := RoomUpdate{
 					Children: newChildren,
 				}
-				
+
 				return c.UpdateRoom(ctx, room.ID, update)
 			}
 		}
 	}
-	
+
 	// Check zones
 	zones, err := c.GetZones(ctx)
 	if err != nil {
 		return err
 	}
-	
+
 	for _, zone := range zones {
 		for _, service := range zone.Services {
 			if service.RType == "grouped_light" && service.RID == groupID {
@@ -299,21 +299,21 @@ func (c *Client) RemoveLightFromGroup(ctx context.Context, groupID, lightID stri
 						newChildren = append(newChildren, child)
 					}
 				}
-				
+
 				if len(newChildren) == len(zone.Children) {
 					return nil // Light wasn't in the zone
 				}
-				
+
 				// Update zone
 				update := ZoneUpdate{
 					Children: newChildren,
 				}
-				
+
 				return c.UpdateZone(ctx, zone.ID, update)
 			}
 		}
 	}
-	
+
 	return fmt.Errorf("room or zone for group %s not found", groupID)
 }
 
@@ -321,14 +321,12 @@ func (c *Client) RemoveLightFromGroup(ctx context.Context, groupID, lightID stri
 
 // UpdateRoom updates a room
 func (c *Client) UpdateRoom(ctx context.Context, id string, update RoomUpdate) error {
-	_, err := c.put(ctx, fmt.Sprintf("/resource/room/%s", id), update)
-	return err
+	return c.putOK(ctx, fmt.Sprintf("/resource/room/%s", id), update)
 }
 
 // UpdateZone updates a zone
 func (c *Client) UpdateZone(ctx context.Context, id string, update ZoneUpdate) error {
-	_, err := c.put(ctx, fmt.Sprintf("/resource/zone/%s", id), update)
-	return err
+	return c.putOK(ctx, fmt.Sprintf("/resource/zone/%s", id), update)
 }
 
 // CreateZone creates a new zone
@@ -337,24 +335,24 @@ func (c *Client) CreateZone(ctx context.Context, zone ZoneCreate) (*Zone, error)
 		Data   []Zone  `json:"data"`
 		Errors []Error `json:"errors"`
 	}
-	
+
 	respBody, err := c.post(ctx, "/resource/zone", zone)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	if len(response.Data) == 0 {
 		return nil, fmt.Errorf("no zone returned")
 	}
-	
+
 	return &response.Data[0], nil
 }
 
@@ -363,4 +361,3 @@ func (c *Client) DeleteZone(ctx context.Context, id string) error {
 	_, err := c.delete(ctx, fmt.Sprintf("/resource/zone/%s", id))
 	return err
 }
-

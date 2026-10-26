@@ -42,16 +42,16 @@ func (c *Client) GetLights(ctx context.Context) ([]Light, error) {
 		Errors []Error `json:"errors"`
 		Data   []Light `json:"data"`
 	}
-	
+
 	err := c.getJSON(ctx, "/resource/light", &response)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	return response.Data, nil
 }
 
@@ -61,20 +61,20 @@ func (c *Client) GetLight(ctx context.Context, id string) (*Light, error) {
 		Errors []Error `json:"errors"`
 		Data   []Light `json:"data"`
 	}
-	
+
 	err := c.getJSON(ctx, fmt.Sprintf("/resource/light/%s", id), &response)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	if len(response.Data) == 0 {
 		return nil, fmt.Errorf("light not found")
 	}
-	
+
 	return &response.Data[0], nil
 }
 
@@ -90,16 +90,16 @@ func (c *Client) GetGroups(ctx context.Context) ([]Group, error) {
 		Errors []Error `json:"errors"`
 		Data   []Group `json:"data"`
 	}
-	
+
 	err := c.getJSON(ctx, "/resource/grouped_light", &response)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	return response.Data, nil
 }
 
@@ -109,20 +109,20 @@ func (c *Client) GetGroup(ctx context.Context, id string) (*Group, error) {
 		Errors []Error `json:"errors"`
 		Data   []Group `json:"data"`
 	}
-	
+
 	err := c.getJSON(ctx, fmt.Sprintf("/resource/grouped_light/%s", id), &response)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	if len(response.Data) == 0 {
 		return nil, fmt.Errorf("group not found")
 	}
-	
+
 	return &response.Data[0], nil
 }
 
@@ -138,16 +138,16 @@ func (c *Client) GetScenes(ctx context.Context) ([]Scene, error) {
 		Errors []Error `json:"errors"`
 		Data   []Scene `json:"data"`
 	}
-	
+
 	err := c.getJSON(ctx, "/resource/scene", &response)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	return response.Data, nil
 }
 
@@ -199,24 +199,24 @@ func (c *Client) CreateScene(ctx context.Context, scene SceneCreate) (*Scene, er
 			ID string `json:"rid"`
 		} `json:"data"`
 	}
-	
+
 	body, err := c.post(ctx, "/resource/scene", scene)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if err := json.Unmarshal(body, &response); err != nil {
 		return nil, err
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	if len(response.Data) == 0 {
 		return nil, fmt.Errorf("no scene ID returned")
 	}
-	
+
 	// Get the created scene
 	return c.GetScene(ctx, response.Data[0].ID)
 }
@@ -227,20 +227,20 @@ func (c *Client) GetScene(ctx context.Context, id string) (*Scene, error) {
 		Errors []Error `json:"errors"`
 		Data   []Scene `json:"data"`
 	}
-	
+
 	err := c.getJSON(ctx, fmt.Sprintf("/resource/scene/%s", id), &response)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	if len(response.Data) == 0 {
 		return nil, fmt.Errorf("scene not found")
 	}
-	
+
 	return &response.Data[0], nil
 }
 
@@ -250,20 +250,20 @@ func (c *Client) GetBridge(ctx context.Context) (*Bridge, error) {
 		Errors []Error  `json:"errors"`
 		Data   []Bridge `json:"data"`
 	}
-	
+
 	err := c.getJSON(ctx, "/resource/bridge", &response)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(response.Errors) > 0 {
 		return nil, fmt.Errorf("API error: %s", response.Errors[0].Description)
 	}
-	
+
 	if len(response.Data) == 0 {
 		return nil, fmt.Errorf("bridge not found")
 	}
-	
+
 	return &response.Data[0], nil
 }
 
@@ -295,7 +295,7 @@ func (c *Client) delete(ctx context.Context, path string) ([]byte, error) {
 
 func (c *Client) request(ctx context.Context, method, path string, data interface{}) ([]byte, error) {
 	url := c.baseURL + path
-	
+
 	var body io.Reader
 	if data != nil {
 		jsonData, err := json.Marshal(data)
@@ -304,33 +304,54 @@ func (c *Client) request(ctx context.Context, method, path string, data interfac
 		}
 		body = bytes.NewReader(jsonData)
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req.Header.Set("hue-application-key", c.username)
 	if data != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
 	}
-	
+
 	return respBody, nil
+}
+
+// putOK writes a resource and returns an error when the bridge reports one.
+func (c *Client) putOK(ctx context.Context, path string, data interface{}) error {
+	body, err := c.put(ctx, path, data)
+	if err != nil {
+		return err
+	}
+	if len(body) == 0 {
+		return nil
+	}
+	var response struct {
+		Errors []Error `json:"errors"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil
+	}
+	if len(response.Errors) > 0 {
+		return fmt.Errorf("API error: %s", response.Errors[0].Description)
+	}
+	return nil
 }
 
 // Helper methods for common operations
@@ -415,11 +436,11 @@ func (c *Client) SetLightEffect(ctx context.Context, id string, effect string, d
 	update := LightUpdate{
 		Effects: &Effects{Effect: effect},
 	}
-	
+
 	if duration > 0 {
 		update.Dynamics = &Dynamics{Duration: duration * 1000} // Convert to milliseconds
 	}
-	
+
 	return c.UpdateLight(ctx, id, update)
 }
 
@@ -484,11 +505,11 @@ func (c *Client) SetGroupEffect(ctx context.Context, id string, effect string, d
 	update := GroupUpdate{
 		Effects: &Effects{Effect: effect},
 	}
-	
+
 	if duration > 0 {
 		update.Dynamics = &Dynamics{Duration: duration * 1000} // Convert to milliseconds
 	}
-	
+
 	return c.UpdateGroup(ctx, id, update)
 }
 
@@ -552,9 +573,9 @@ func (c *Client) GetAllSupportedEffects(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	effectsMap := make(map[string]bool)
-	
+
 	for _, light := range lights {
 		if light.Effects != nil {
 			for _, effect := range light.Effects.EffectValues {
@@ -562,12 +583,12 @@ func (c *Client) GetAllSupportedEffects(ctx context.Context) ([]string, error) {
 			}
 		}
 	}
-	
+
 	var effects []string
 	for effect := range effectsMap {
 		effects = append(effects, effect)
 	}
-	
+
 	return effects, nil
 }
 
@@ -576,49 +597,49 @@ func (c *Client) GetAllSupportedEffects(ctx context.Context) ([]string, error) {
 func hexToXY(hex string) (float64, float64) {
 	// Remove # if present
 	hex = strings.TrimPrefix(hex, "#")
-	
+
 	// Parse hex values
 	var r, g, b uint8
 	fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b)
-	
+
 	// Convert to XY using simplified algorithm
 	// This is a basic conversion - a full implementation would use the light's color gamut
 	rf := float64(r) / 255.0
 	gf := float64(g) / 255.0
 	bf := float64(b) / 255.0
-	
+
 	// Apply gamma correction
 	if rf > 0.04045 {
 		rf = math.Pow((rf+0.055)/1.055, 2.4)
 	} else {
 		rf = rf / 12.92
 	}
-	
+
 	if gf > 0.04045 {
 		gf = math.Pow((gf+0.055)/1.055, 2.4)
 	} else {
 		gf = gf / 12.92
 	}
-	
+
 	if bf > 0.04045 {
 		bf = math.Pow((bf+0.055)/1.055, 2.4)
 	} else {
 		bf = bf / 12.92
 	}
-	
+
 	// Convert to XYZ using sRGB color space matrix
 	X := rf*0.4124564 + gf*0.3575761 + bf*0.1804375
 	Y := rf*0.2126729 + gf*0.7151522 + bf*0.0721750
 	Z := rf*0.0193339 + gf*0.1191920 + bf*0.9503041
-	
+
 	// Convert to xy
 	sum := X + Y + Z
 	if sum == 0 {
 		return 0.3127, 0.3290 // Default white
 	}
-	
+
 	x := X / sum
 	y := Y / sum
-	
+
 	return x, y
 }

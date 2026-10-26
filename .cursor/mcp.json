@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "hue": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/hue-mcp",
+      "envFile": ".env"
+    }
+  }
+}
